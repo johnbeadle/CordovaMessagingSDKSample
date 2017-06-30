@@ -76,12 +76,11 @@ extension String {
         do {
             try LPMessagingSDK.instance.initialize(lpAccountNumber)
             
-            // only set config if we have a valid argument
-            // deprecated - should be done through direct editing of this function  for the relevant options
-            // in which case move the setSDKConfigurations call outside of this wrapping loop and call on init every time
+            try loadSdkConfiguration("branding")
             
+            // only set config if we have a valid argument
             if let config = command.arguments.lastElement as? [String:AnyObject] {
-                setSDKConfigurations(config)
+                setSdkConfiguration(config)
             }
             
             
@@ -423,33 +422,24 @@ extension String {
        }
     }
     
-    
     /**
      Change default SDK configurations
-
-     TODO: update method to support config and branding changes via a JSON object sent through via the cordova wrapper to change the settings here.
-
-     TODO: Add support for other config options as per SDK documentation
      */
-    func setSDKConfigurations(_ config:[String:AnyObject]) {
-        let configurations = LPConfig.defaultConfiguration
+    func setSdkConfiguration(_ config:[String:AnyObject]) {
+        if let branding = config["branding"] {
+            LPConfig.updateDefaultConfiguration(branding as! [String : AnyObject])
+        }
+    }
+    
+    /**
+     Load SDK configuration from a JSON resource
+     */
+    func loadSdkConfiguration(_ resource:String) throws {
+        let path = Bundle.main.path(forResource: resource, ofType: "json")
+        let data = NSData(contentsOfFile: path!)
+        let json = try JSONSerialization.jsonObject(with: data! as Data, options: JSONSerialization.ReadingOptions.allowFragments)
         
-        configurations.brandAvatarImage = UIImage(named: "agent")
-        
-        configurations.remoteUserBubbleBackgroundColor = UIColor.purple
-        configurations.remoteUserBubbleBorderColor = UIColor.purple
-        configurations.remoteUserBubbleTextColor = UIColor.white
-        configurations.remoteUserAvatarIconColor = UIColor.white
-        configurations.remoteUserAvatarBackgroundColor = UIColor.purple
-        
-        configurations.brandName = config["branding"]?["brandName"] as? String ?? "LPMessagingSampleBrand"
-        
-        print("@@@ ios ****** BRAND NAME WAS SETUP FROM CONFIG !!! \(configurations.brandName)")
-        
-        configurations.userBubbleBackgroundColor = UIColor.lightGray
-        configurations.userBubbleTextColor = UIColor.white
-        
-        configurations.sendButtonEnabledColor = UIColor.purple
+        LPConfig.updateDefaultConfiguration(json as! [String : AnyObject])
     }
     
     fileprivate func sendEventToJavaScript(_ dicValue:[String:String]) {
